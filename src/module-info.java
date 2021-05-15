@@ -11,6 +11,10 @@ module scientigrapher {
 	requires java.base;
 	requires com.fasterxml.jackson.core;
 	requires com.fasterxml.jackson.databind;
+	requires htmlunit;
+	requires java.logging;
+	requires java.desktop;
+	requires java.datatransfer;
 	
 	exports scientigrapher.input;
 }
