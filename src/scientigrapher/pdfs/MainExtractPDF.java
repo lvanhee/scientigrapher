@@ -49,12 +49,7 @@ public class MainExtractPDF {
 		File folder = new File(folderName);
 
 		return Arrays.asList(folder.listFiles()).stream().map(x->{
-			try {
-				return PdfReader.getStringContentsOutOfFile(x);
-			} catch (IOException e) {
-				e.printStackTrace();
-				throw new Error();
-			}
+			return PdfReader.getStringContentsOutOfFile(x);
 		}).reduce("", (x,y)-> x+"\n\n"+y);
 
 	}

@@ -1,4 +1,4 @@
-package scientigrapher.input;
+package scientigrapher.input.pdfs;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -10,22 +10,22 @@ import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.Set;
 
-public class LinksDatabase {
+public class PdfToLinksDatabase {
 	private static final File DATABASE_RECORD = Paths.get("data/cache/failed_urls.obj").toFile(); 
 
 	private static final Set<String> failedURLs = new HashSet<>();
 	static {
 		try {
-			 
-            FileInputStream fileIn = new FileInputStream(DATABASE_RECORD);
-            ObjectInputStream objectIn = new ObjectInputStream(fileIn);
- 
-            Object obj = objectIn.readObject();
-            objectIn.close();
-            failedURLs.addAll((Set)obj);
- 
-        } catch (Exception ex) {
-            ex.printStackTrace();
+			if(DATABASE_RECORD.exists()) {
+				FileInputStream fileIn = new FileInputStream(DATABASE_RECORD);
+				ObjectInputStream objectIn = new ObjectInputStream(fileIn);
+
+				Object obj = objectIn.readObject();
+				objectIn.close();
+				failedURLs.addAll((Set)obj);}
+
+		} catch (Exception ex) {
+			ex.printStackTrace();
         }
 		
 	}
@@ -37,11 +37,10 @@ public class LinksDatabase {
 		return failedURLs.contains(website.toString());
 	}
 
-	public static void recordAsFailedToGetToAPdf(URL website) {
+	public static synchronized void recordAsFailedToGetToAPdf(URL website) {
 		failedURLs.add(website.toString());
 		
 		try {
-			 
             FileOutputStream fileOut = new FileOutputStream(DATABASE_RECORD);
             ObjectOutputStream objectOut = new ObjectOutputStream(fileOut);
             objectOut.writeObject(failedURLs);

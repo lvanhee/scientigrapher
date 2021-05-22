@@ -1,4 +1,4 @@
-package scientigrapher.input;
+package scientigrapher.input.pdfs;
 
 import java.awt.AWTException;
 import java.awt.HeadlessException;
@@ -69,7 +69,7 @@ public class RobotManager {
 		throw new Error();
 	}
 
-	public static void writeAddress(String pageToAsk) {
+	public static void writeAddressAndLoadPage(String pageToAsk) {
 		
 		r.keyPress(KeyEvent.VK_CONTROL);
 		r.keyPress(KeyEvent.VK_L);
@@ -156,7 +156,7 @@ public class RobotManager {
 		}
 	}
 	
-	public static void savePage(String parent, String name) {
+	public synchronized static void savePage(String parent, String name) {
 		r.keyPress(KeyEvent.VK_CONTROL);
 		r.keyPress(KeyEvent.VK_S);
 
@@ -211,7 +211,24 @@ public class RobotManager {
 		
 		pasteText(parent);*/
 		
+		try {
+			Thread.sleep(500);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		r.keyPress(KeyEvent.VK_ENTER);
+		try {
+			Thread.sleep(500);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		r.keyRelease(KeyEvent.VK_ENTER);
 		
+		try {
+			Thread.sleep(500);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
 		r.keyPress(KeyEvent.VK_ESCAPE);
 		try {
 			Thread.sleep(100);

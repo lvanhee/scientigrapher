@@ -16,5 +16,4 @@ module scientigrapher {
 	requires java.desktop;
 	requires java.datatransfer;
 	
-	exports scientigrapher.input;
 }
