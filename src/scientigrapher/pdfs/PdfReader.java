@@ -36,6 +36,8 @@ public class PdfReader {
 		String parsedText = pdfStripper.getText(pdDoc);
 		parsedText = parsedText.replaceAll(""+(char)13, " ");
 		while(parsedText.contains("  ")) parsedText = parsedText.replaceAll("  ", " ");
+		parsedText = parsedText.replaceAll("- \n", "");
+		parsedText = parsedText.replaceAll("-\n", "");
 
 		return parsedText;
 		} catch (IOException e) {

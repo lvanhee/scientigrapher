@@ -25,4 +25,11 @@ hs_err_pid*
 /target/
 /.classpath
 /.project
+
 *.pdf
+/data/
+*.lock
+*.properties
+*.bin
+*.prefs
+*.csv

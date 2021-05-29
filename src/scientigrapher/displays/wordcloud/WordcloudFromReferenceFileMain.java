@@ -29,7 +29,7 @@ public class WordcloudFromReferenceFileMain {
 		
 		Map<Reference, String> pdfs = PdfReader.getStringContentsPerReference(allReferences);
 		
-		String outOfFile = pdfs.values().stream().reduce("", (x,y)->x+"\n"+y);
+		String outOfFile = pdfs.values().parallelStream().reduce("", (x,y)->x+"\n"+y);
 		Files.writeString(Paths.get("data/raw_text_dump.txt"), outOfFile);
 		
 		outOfFile = StringProcessing.clearOfSymbols(outOfFile);
