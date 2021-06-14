@@ -3,8 +3,8 @@ package scientigrapher.displays.wordcloud;
 import java.io.File;
 import java.io.IOException;
 
-import scientigrapher.StringProcessing;
 import scientigrapher.pdfs.PdfReader;
+import textprocessing.TextProcessingUtils;
 
 public class MainGenerateTextForWordCloudFromPDF {
 	
@@ -15,8 +15,8 @@ public class MainGenerateTextForWordCloudFromPDF {
 		String outOfFile = PdfReader.getStringContentsOutOfFile(new File(fileName));
 		
 		outOfFile = outOfFile.replaceAll("\n", " ");
-		outOfFile = StringProcessing.purgeAllPunctuation(outOfFile);
-		outOfFile = WordcloudFilter.purgeTermsThatAreIrrelevantForWordClouds(outOfFile);
+		outOfFile = TextProcessingUtils.purgeAllPunctuation(outOfFile);
+		outOfFile = ScientificWordFilter.purgeTermsThatAreNotSpecificToScience(outOfFile);
 		
 		System.out.println(outOfFile);
 	}

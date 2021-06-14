@@ -8,6 +8,7 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
 
 import scientigrapher.input.references.Reference;
 import scientigrapher.pdfs.PdfReader;
+import webscrapping.RobotBasedPageReader;
 
 import java.awt.Robot;
 import java.io.BufferedReader;
@@ -106,13 +107,35 @@ public class ReferenceToPdfGetter {
 	}
 
 	public static boolean downloadPdfFor(Reference r) {
+		if(isFailedToGet(r))return false;
 		if(isValidPDFFileAlreadyThere(r))
 			return true;
 
 		boolean found = downloadPdfWithUnpaywall(r);
-		if(found)return found;
-		return downloadPDFWithScholar(r);
+		if(!found)found = downloadPDFWithScholar(r);
+		if(!found)
+			try {
+				getFailedPdfFileFor(r).createNewFile();
+			} catch (IOException e) {
+				e.printStackTrace();
+				throw new Error();
+			}
+		
+		return found;
 
+	}
+
+	private static boolean isFailedToGet(Reference r) {
+		return 
+				getFailedPdfFileFor(r).exists();
+	}
+
+	private static File getFailedPdfFileFor(Reference r) {
+		File f = getPdfFileFor(r);
+		String fileName = f.getName();
+		File parent = f.getParentFile();
+		File res = new File(parent+"_failed_to_dl/"+fileName);
+		return res;
 	}
 
 	private static boolean isValidPDFFileAlreadyThere(Reference r) {
@@ -121,6 +144,7 @@ public class ReferenceToPdfGetter {
 
 	private static boolean isValidFileAlreadyThere(File f) {
 		if(!f.exists())return false;
+		if(f.getName().endsWith("cache"))return false;
 		if(f.length() < 100) return false;
 		//if(f.exists() && f.length() > 100000)return true;
 		
@@ -201,10 +225,8 @@ public class ReferenceToPdfGetter {
 			pageToAsk = "https://scholar.google.com/scholar?q=\""+requestSideTitle+"\"";
 		}
 
-		RobotManager.clickOnChrome();
-		RobotManager.writeAddressAndLoadPage(pageToAsk);
-		fullText = RobotManager.getFullPage();
-		RobotManager.closePage();
+		
+		fullText = RobotBasedPageReader.getFullPageAsHtml(pageToAsk);
 
 
 		BufferedWriter writer;
@@ -565,15 +587,15 @@ public class ReferenceToPdfGetter {
 		if(outputFile.exists())
 			outputFile.delete();
 
-		RobotManager.clickOnChrome();
-		RobotManager.writeAddressAndLoadPage(link.toString());
+		RobotBasedPageReader.clickOnChrome();
+		RobotBasedPageReader.writeAddressAndLoadPage(link.toString());
 		try {
 			Thread.sleep(2000);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
 
-		RobotManager.savePage(outputFile.getParentFile().getAbsolutePath(),outputFile.getName());
+		RobotBasedPageReader.savePage(outputFile.getParentFile().getAbsolutePath(),outputFile.getName());
 
 		System.out.print("");
 	}

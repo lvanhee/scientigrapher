@@ -15,11 +15,13 @@ public class Reference {
 	private final String doi;
 	private final String title;
 	private final int id;
+	private final Integer year;
 
-	public Reference(String title2, String doi2, int id) {
+	public Reference(String title2, String doi2, int id, Integer year) {
 		this.doi = doi2;
 		this.title = title2;
 		this.id = id;
+		this.year = year;
 	}
 
 	public boolean hasDoi() {
@@ -34,8 +36,8 @@ public class Reference {
 		return title;
 	}
 
-	public static Reference newInstance(String title2, String doi2, int id) {
-		return new Reference(title2,doi2, id);
+	public static Reference newInstance(String title2, String doi2, int id, Integer year) {
+		return new Reference(title2,doi2, id, year);
 	}
 
 	public static Reference parse(String entry, int val)
@@ -47,7 +49,18 @@ public class Reference {
 			doi = entry.substring(entry.indexOf("doi=")+5);
 			doi = doi.substring(0,doi.indexOf("}"));
 		}
-		return Reference.newInstance(title,doi,val);
+		Integer year=null;
+		if(entry.replaceAll(" ", "").contains("year={"))
+		{
+			String sub = entry.replaceAll(" ", "");
+			sub = sub.substring(sub.indexOf("year={")+6);
+			sub = sub.substring(0,sub.indexOf("}"));
+			year = Integer.parseInt(sub);
+		}
+		else 
+			throw new Error();
+		
+		return Reference.newInstance(title,doi,val,year);
 	}
 
 	public int getId() {
@@ -82,6 +95,10 @@ public class Reference {
 			e.printStackTrace();
 			throw new Error();
 		}
+	}
+
+	public int getYear() {
+		return year;
 	}
 
 }

@@ -15,5 +15,7 @@ module scientigrapher {
 	requires java.logging;
 	requires java.desktop;
 	requires java.datatransfer;
+	requires textprocessing.generics;
+	requires webscrapping;
 	
 }
