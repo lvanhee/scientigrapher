@@ -17,5 +17,6 @@ module scientigrapher {
 	requires java.datatransfer;
 	requires textprocessing.generics;
 	requires webscrapping;
+	requires cachingutils;
 	
 }

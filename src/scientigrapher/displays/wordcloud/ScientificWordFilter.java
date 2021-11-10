@@ -20,7 +20,7 @@ public class ScientificWordFilter {
 					"section","Table","part","Report","Study", "thank","within","less","good","either","might",
 					"using", "still","also","overall","presented","others","often","ways","back","long","will","org",
 					"without","way","much","whole",
-					"make","can","and",
+					"make","can","and","had",
 					"One", "one","two","three","seen",
 					"based","many", "ACM","use", "well",
 					"used","the", "of","a","to","in","is","that","for",

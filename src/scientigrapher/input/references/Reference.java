@@ -1,5 +1,6 @@
 package scientigrapher.input.references;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -40,25 +41,38 @@ public class Reference {
 		return new Reference(title2,doi2, id, year);
 	}
 
-	public static Reference parse(String entry, int val)
+	public static Reference parse(String rawTextBibtexEntry, int val)
 	{
-		String title = entry.substring(entry.indexOf("title=")+7);
+		String aUmlaut = "\\{\\\\\"\\{a\\}\\}";
+		rawTextBibtexEntry = rawTextBibtexEntry.replaceAll(aUmlaut, "ä");
+		rawTextBibtexEntry = rawTextBibtexEntry.replaceAll("\\{\\\\aa\\}", "å");
+		rawTextBibtexEntry = rawTextBibtexEntry.replaceAll("\\\\'\\{e\\}", "é");
+		
+		rawTextBibtexEntry = rawTextBibtexEntry.replaceAll("title =", "title=");
+		String title = rawTextBibtexEntry.substring(rawTextBibtexEntry.indexOf("\ntitle=")+8);
+		
 		title = title.substring(0,title.indexOf("}"));
+		title = title.replaceAll("\\{", "");
 		String doi = null;
-		if(entry.contains("doi")) {
-			doi = entry.substring(entry.indexOf("doi=")+5);
+		
+		rawTextBibtexEntry = rawTextBibtexEntry.replaceAll("doi =", "doi=");
+		if(rawTextBibtexEntry.contains("doi=")) {
+			doi = rawTextBibtexEntry.substring(rawTextBibtexEntry.indexOf("doi=")+5);
 			doi = doi.substring(0,doi.indexOf("}"));
+			doi = doi.replaceAll("\\{", "");
+			doi = doi.replaceAll("<","%3C");
+			doi = doi.replaceAll(">","%3E");
 		}
 		Integer year=null;
-		if(entry.replaceAll(" ", "").contains("year={"))
+		if(rawTextBibtexEntry.replaceAll(" ", "").contains("year={"))
 		{
-			String sub = entry.replaceAll(" ", "");
+			String sub = rawTextBibtexEntry.replaceAll(" ", "");
 			sub = sub.substring(sub.indexOf("year={")+6);
 			sub = sub.substring(0,sub.indexOf("}"));
 			year = Integer.parseInt(sub);
 		}
-		else 
-			throw new Error();
+		/*else 
+			throw new Error();*/
 		
 		return Reference.newInstance(title,doi,val,year);
 	}
@@ -72,10 +86,10 @@ public class Reference {
 		return id+" "+doi+" "+title;
 	}
 
-	public static Set<Reference> referencesFromBibFile(String fileName){
+	public static Set<Reference> referencesFromBibFile(File fileName){
 		String entries;
 		try {
-			entries = Files.readString(Paths.get(fileName));
+			entries = Files.readString(fileName.toPath());
 
 			AtomicInteger currentRefNumber = new AtomicInteger();
 			return 

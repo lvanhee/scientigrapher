@@ -6,6 +6,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
+import scientigrapher.input.ProgramwideParameters;
 import scientigrapher.input.references.Reference;
 import scientigrapher.pdfs.PdfReader;
 import textprocessing.TextProcessingUtils;
@@ -13,10 +14,8 @@ import textprocessing.TextProcessingUtils;
 public class CorpusStatistics {
 	public static void main(String[] args)
 	{
-		String fileName = "data/scopus.bib";
-
-		Set<Reference> allRefs = Reference.referencesFromBibFile(fileName);
-		Map<Reference, String> refToPdf = PdfReader.getStringContentsFromValidFilesMappedToReferenceFromFile(fileName); 
+		Set<Reference> allRefs = Reference.referencesFromBibFile(ProgramwideParameters.REFERENCE_BIB_FILE);
+		Map<Reference, String> refToPdf = PdfReader.getStringContentsFromValidFilesMappedToReferenceFromFile(ProgramwideParameters.REFERENCE_BIB_FILE); 
 		Set<Reference> allRefsWithPDF = refToPdf.keySet();
 
 		int size = allRefs.size();

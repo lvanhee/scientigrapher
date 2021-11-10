@@ -12,7 +12,7 @@ public class MainGenerateTextForWordCloudFromPDF {
 	{
 		String fileName = "data/thesis.pdf";
 
-		String outOfFile = PdfReader.getStringContentsOutOfFile(new File(fileName));
+		String outOfFile = PdfReader.getStringContentsOutOfFile(new File(fileName),"", false);
 		
 		outOfFile = outOfFile.replaceAll("\n", " ");
 		outOfFile = TextProcessingUtils.purgeAllPunctuation(outOfFile);

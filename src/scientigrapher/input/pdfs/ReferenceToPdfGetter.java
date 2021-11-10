@@ -6,8 +6,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 
+import cachingutils.FileBasedStringSetCache;
+import cachingutils.SplittedFileBasedCache;
+import scientigrapher.input.ProgramwideParameters;
 import scientigrapher.input.references.Reference;
 import scientigrapher.pdfs.PdfReader;
+import textprocessing.TextProcessingUtils;
 import webscrapping.RobotBasedPageReader;
 
 import java.awt.Robot;
@@ -35,9 +39,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
@@ -48,34 +54,51 @@ public class ReferenceToPdfGetter {
 
 	public static final String POSTS_API_URL = "https://api.unpaywall.org/v2/search";
 
-	public static final File PDF_FOLDER = Paths.get("data/references").toFile();
-
 	public static void main(String[] args) throws IOException, InterruptedException {
-
-		purgeTheReferenceFolderOutOfNonPdf();
-
-		List<String> failedOnes = new ArrayList<>();
-
 		
-		Set<Reference> allEntries = Reference.referencesFromBibFile("data/scopus.bib");
+		//checkEdgeCases();
 
+		purgeThePdfFilesThatAreNotProperPdfDocuments();
+		
+		List<String> failedOnes = new ArrayList<>();
+		
+		Set<Reference> allEntries = Reference.referencesFromBibFile(ProgramwideParameters.REFERENCE_BIB_FILE);
+		
 		int total = allEntries.size();
+		
+		System.out.println("Processing "+total+" entries");
 
 		allEntries = allEntries.parallelStream().filter(x->!isValidPDFFileAlreadyThere(x)).collect(Collectors.toSet());
+		
 
 		AtomicInteger successes = new AtomicInteger();
 		AtomicInteger currentDone = new AtomicInteger();
 
-		allEntries.parallelStream().forEach(r->
-		downloadPdfWithUnpaywall(r));
-		
+		allEntries.stream().forEach(r->
+		attemptDownloadingPdfWithUnpaywall(r));
+				
 		allEntries = allEntries.stream().filter(x->!isValidPDFFileAlreadyThere(x)).collect(Collectors.toSet());
 		
+		System.out.println("Attempted downloading entries with Unpaywall. Remaining entries without proper PDF file:"+allEntries.size());
+		
+		System.out.println("Now loading the metadata information from google scholar");
+		
+		int totalEntriesRemaining = allEntries.size();
 		allEntries.stream()
-		.forEach(x->ReferenceToPdfGetter
-				.getGoogleScholarHtmlTextWithCaching(x));
+		.sorted((x,y)->Integer.compare(x.getId(),y.getId()))
+		.forEach(x->{
+		ReferenceToPdfGetter
+				.getHtmlOfGoogleScholarReferencePage(x);
+		System.out.println("Loading metadata from google scholar "+ currentDone.get()+"/"+totalEntriesRemaining+" "+x.getTitle());
+		currentDone.incrementAndGet();
+		});
+		
+		currentDone.set(0);
+		
+		System.out.println("Metadata loaded. Now loading the ");
 
 		allEntries.stream()
+		.sorted((x,y)->Integer.compare(x.getId(),y.getId()))
 		.forEach(
 				r ->{
 					System.out.println(r);
@@ -89,12 +112,27 @@ public class ReferenceToPdfGetter {
 
 		System.out.println("Failed due to lack of information:"+failedOnes);
 
-		purgeTheReferenceFolderOutOfNonPdf();
+		purgeThePdfFilesThatAreNotProperPdfDocuments();
 
 	}
 
-	private static void purgeTheReferenceFolderOutOfNonPdf() {
-		Arrays.asList(PDF_FOLDER.listFiles()).stream()
+	private static void checkEdgeCases() {
+		if(ProgramwideParameters.PDF_FOLDER.exists()||!ProgramwideParameters.PDF_FOLDER.isDirectory()||ProgramwideParameters.PDF_FOLDER.listFiles().length==0)
+		{
+			throw new Error("No pdf folder available. Run first:"+ReferenceToPdfGetter.class);
+		}
+	}
+
+	private static void purgeThePdfFilesThatAreNotProperPdfDocuments() throws IOException {	
+		if(!ProgramwideParameters.PDF_FOLDER.exists())
+			if(!ProgramwideParameters.PDF_FOLDER.mkdirs())
+				throw new Error();
+		if(!ProgramwideParameters.PDF_FOLDER.exists())
+			throw new Error();
+		
+		File[] listFiles = ProgramwideParameters.PDF_FOLDER.listFiles();
+		
+		Arrays.asList(listFiles).stream()
 		.forEach(f->
 		{
 			//System.out.println("Checking for purging:"+f);
@@ -106,20 +144,21 @@ public class ReferenceToPdfGetter {
 		});
 	}
 
+	
+	private static FileBasedStringSetCache<Integer> filesWithLinksThatCouldNotBeDownloaded = FileBasedStringSetCache.loadCache(ProgramwideParameters.FAILED_TO_LOAD_PDF_BY_ALL_MEANS.toPath(), 
+			Integer::parseInt, x->x+"");
 	public static boolean downloadPdfFor(Reference r) {
+		if(filesWithLinksThatCouldNotBeDownloaded.contains(r.getId()))
+			return false;
 		if(isFailedToGet(r))return false;
 		if(isValidPDFFileAlreadyThere(r))
 			return true;
 
-		boolean found = downloadPdfWithUnpaywall(r);
-		if(!found)found = downloadPDFWithScholar(r);
+		boolean found = attemptDownloadingPdfWithUnpaywall(r);
+		if(!found)found = downloadPDFFromScholarLinks(r);
+		
 		if(!found)
-			try {
-				getFailedPdfFileFor(r).createNewFile();
-			} catch (IOException e) {
-				e.printStackTrace();
-				throw new Error();
-			}
+			filesWithLinksThatCouldNotBeDownloaded.add(r.getId());
 		
 		return found;
 
@@ -182,36 +221,17 @@ public class ReferenceToPdfGetter {
 		}
 	}
 
-	private static synchronized boolean downloadPDFWithScholar(Reference r) {
-
-		
-
-
-		return scholarRawInputToPDF(r, getGoogleScholarHtmlTextWithCaching(r));
-
+	private static synchronized boolean downloadPDFFromScholarLinks(Reference r) {
+		return getPDFFromRawInput(r, getHtmlOfGoogleScholarReferencePage(r));
 	}
 
 
-	private static String getGoogleScholarHtmlTextWithCaching(Reference r) {
-		File cacheFile = getCachedGoogleScholarFile(r);
+	private static final SplittedFileBasedCache<Reference, String> googleReferenceManagerCache = 
+			SplittedFileBasedCache.newInstance(r->new File(ProgramwideParameters.GOOGLE_SCHOLAR_ENTRY_FOLDER.getAbsolutePath()+"/"+r.getId()+".txt"), Function.identity(), Function.identity());
+	private static String getHtmlOfGoogleScholarReferencePage(Reference r) {
+		if(googleReferenceManagerCache.has(r)) return googleReferenceManagerCache.get(r);
 
-		if(cacheFile.exists())
-		{
-
-			try {
-				return Files.readAllLines(
-						cacheFile.toPath(),
-						StandardCharsets.ISO_8859_1)
-						.stream()
-						.reduce((x,y)->x+y).get();
-			} catch (IOException e) {
-				e.printStackTrace();
-				throw new Error();
-			}
-
-		}
-
-
+		
 		String fullText = null;
 		String pageToAsk = null;
 		if(r.getDoi()!=null)
@@ -224,27 +244,31 @@ public class ReferenceToPdfGetter {
 			String requestSideTitle = r.getTitle().replaceAll(" ", "+").replaceAll(",", "");
 			pageToAsk = "https://scholar.google.com/scholar?q=\""+requestSideTitle+"\"";
 		}
-
 		
-		fullText = RobotBasedPageReader.getFullPageAsHtml(pageToAsk);
-
-
-		BufferedWriter writer;
-		try {
-			writer = new BufferedWriter(new FileWriter(cacheFile));
-			writer.write(fullText);
-
-			writer.close();
-		} catch (IOException e) {
-			e.printStackTrace();
+		
+		fullText = RobotBasedPageReader.getFullPageAsHtml(pageToAsk,1);
+		
+		if(r.getDoi()!=null && fullText.contains("did not match any articles."))
+		{
+			String requestSideTitle = r.getTitle().replaceAll(" ", "+").replaceAll(",", "");
+			pageToAsk = "https://scholar.google.com/scholar?q=\""+requestSideTitle+"\"";
+			fullText = RobotBasedPageReader.getFullPageAsHtml(pageToAsk,1);
 		}
+		
 		if(fullText.contains("we can't verify that you're not a robot when JavaScript is turned off")
+				||fullText.contains("Prouvez-\r\n" + 
+						"nous\r\n" + 
+						"que vous n'êtes pas une machine\r\n" + 
+						"")
 				|| fullText.contains("Our systems have detected unusual traffic from your computer network"))
 			throw new Error("Busted that we are a robot!");
+		
+		googleReferenceManagerCache.add(r, fullText);
+		
 		return fullText;
 	}
 
-	private static boolean scholarRawInputToPDF(Reference r, String fullText) {
+	private static boolean getPDFFromRawInput(Reference r, String fullText) {
 		boolean found = fullText.contains(".pdf") || fullText.contains("PDF");
 		if(!found)return false;
 
@@ -264,12 +288,14 @@ public class ReferenceToPdfGetter {
 					current = current.replaceAll("\\]", "");
 
 					if(current.contains(" ")) return null;
+					current = current.replaceAll("#", "%23");
 					try {
 						return new URI(current).toURL();
 					} catch (MalformedURLException e) {
 						e.printStackTrace();
 					} catch (URISyntaxException e) {
 						e.printStackTrace();
+						return null;
 					}
 					throw new Error();
 				})
@@ -293,9 +319,18 @@ public class ReferenceToPdfGetter {
 
 							current = current.replaceAll("\\[", "");
 							current = current.replaceAll("\\]", "");
+							current = current.replaceAll("<b>", "");
+							current = current.replaceAll("</b>", "");
+							current = current.replaceAll("<br>", "");
+							current = current.replaceAll("\n", "");
+							if(current.contains(" "))
+								current = current.substring(0,current.indexOf(" "));
+							
+							current = current.replaceAll("#", "%23");
 
 							if(!isAllowedProvider(current)) return null;
 							try {
+								current = transformNameToGetToPDF(current);
 								return new URI(current).toURL();
 							} catch (MalformedURLException | URISyntaxException e) {
 								// TODO Auto-generated catch block
@@ -313,6 +348,12 @@ public class ReferenceToPdfGetter {
 		return downloadPdfFromSetOfLinks(links, r);
 	}
 
+	private static String transformNameToGetToPDF(String current) {
+		if(current.contains("https://www.ncbi.nlm.nih.gov"))
+			return current+"/pdf";
+		return current;
+	}
+
 	private static boolean isAllowedProvider(String current) {
 		if(current.startsWith("https://www.example.edu/paper.pdf"))return false;
 		if(current.contains("ieeexplore"))return false;
@@ -328,8 +369,16 @@ public class ReferenceToPdfGetter {
 		if(current.contains("https://citeseerx.ist.psu.edu/viewdoc/download")&&current.endsWith("type=pdf"))return true;
 		if(current.contains("https://www.computer.org/csdl/api/v1/periodical/mags/"))return true;
 		if(current.contains("https://onlinelibrary.wiley.com/doi/pdfdirect/"))return true;
+		if(current.contains("https://journals.vgtu.lt/"))return true;
+		if(current.contains("https://doi.org/"))return true;
+		if(current.contains("https://hal."))return true;
+		if(current.contains("https://revistas.javeriana.edu.co/index.php/revPsycho/"))return true;
+		if(current.contains("https://revistia.org/index.php/"))return true;
+		if(current.contains("https://par.nsf.gov/"))return true;
 		
 
+		if(current.contains("https://www.ncbi.nlm.nih.gov/"))return true;
+		//though reachable pdf from the link
 
 		if(current.startsWith("https://dl.acm.org/doi/abs/"))return false;
 		if(current.startsWith("https://scholar.google"))return false;
@@ -367,12 +416,14 @@ public class ReferenceToPdfGetter {
 		if(current.contains("https://drive.google.com/file/"))return false;
 		if(current.contains("https://ojs.aaai.org/index.php/AAAI/article/download/"))return false;
 		if(current.contains("https://elibrary.ru/"))return false;
+
 		if(current.contains("https://content.iospress.com/articles/"))return false;
 		if(current.contains("https://repository.tudelft.nl/islandora/object/"))return false;
+		if(current.contains("https://psycnet.apa.org"))return false;
 		
+		return true;
 		
-		
-		throw new Error();
+	//	throw new Error();
 	}
 
 	private static String traditionalWebPageContents(String webpage) {
@@ -437,7 +488,20 @@ public class ReferenceToPdfGetter {
 		}
 	}
 
-	private static boolean downloadPdfWithUnpaywall(Reference r) {
+	
+	private final static FileBasedStringSetCache<Integer> referenceFoundOnUnpaywall = FileBasedStringSetCache
+			.loadCache(ProgramwideParameters.UNPAYWALL_FOUND_ENTRIES.toPath(), x->Integer.parseInt(x), (Integer x)->x.toString());
+	
+	private final static FileBasedStringSetCache<Integer> referenceFailedToBeFoundOnUnpaywall = FileBasedStringSetCache
+			.loadCache(ProgramwideParameters.UNPAYWALL_UNFOUND_ENTRIES.toPath(), x->Integer.parseInt(x), (Integer x)->x.toString());
+	
+	private static boolean attemptDownloadingPdfWithUnpaywall(Reference r) {
+		if(referenceFoundOnUnpaywall.contains(r.getId()))return true;
+		if(referenceFailedToBeFoundOnUnpaywall.contains(r.getId()))return false;
+		
+		/*if(r.toString().contains(" emotion: An uncertainty theory of anxiety"))
+			System.out.println();*/
+		
 		HttpClient client = HttpClient.newHttpClient();
 		//   HttpRequest request = HttpRequest.newBuilder(URI.create("https://api.unpaywall.org/v2/search/?query="+title+"&is_oa=true&email=unpaywall_00@example.com"))
 		HttpRequest request = null;
@@ -488,13 +552,18 @@ public class ReferenceToPdfGetter {
 						)
 				.collect(Collectors.toSet()); 
 
-
-		return downloadPdfFromSetOfLinks(links,r);
+		boolean res = downloadPdfFromSetOfLinks(links,r);
+		
+		if(res)
+			referenceFoundOnUnpaywall.add(r.getId());
+		else
+			referenceFailedToBeFoundOnUnpaywall.add(r.getId());
+		return res;
 	}
 
 	public static File getPdfFileFor(Reference r) {
 		return Paths
-				.get("data/references/"+r.getId()+".pdf")
+				.get(ProgramwideParameters.PDF_FOLDER.getAbsolutePath()+"/"+r.getId()+".pdf")
 				.toFile();
 	}
 
@@ -513,10 +582,6 @@ public class ReferenceToPdfGetter {
 		File outputFile = getPdfFileFor(r);
 
 
-		boolean found = false;
-
-
-
 		for(URL website:links)
 		{
 			if(PdfToLinksDatabase.hasLinkFailedToLeadToAPdf(website))
@@ -527,7 +592,6 @@ public class ReferenceToPdfGetter {
 
 				FileOutputStream fos = new FileOutputStream(outputFile);
 				fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
-				found = true;
 				fos.close();
 				rbc.close();
 				if(isValidPDFFileAlreadyThere(r))
@@ -542,7 +606,16 @@ public class ReferenceToPdfGetter {
 			} catch (IOException e) {
 
 				if(e.toString().contains("Server returned HTTP response code: 403"))
+				{
 					System.out.println("Forbidden access, can be tried by hand: "+website);
+					continue;
+				}
+				if(e.toString().contains("java.io.IOException: Server returned HTTP response code: 503 for URL"))
+				{
+					System.out.println("Forbidden access, can be tried by hand: "+website);
+					continue;
+				}
+				
 				else if(e.toString().contains("received handshake warning"))
 					System.out.println("received handshake warning, can be tried by hand: "+website);
 				else if(e.toString().contains("Server returned HTTP response code: 400"))
@@ -555,6 +628,7 @@ public class ReferenceToPdfGetter {
 					continue;
 				else if(e.toString().contains("java.io.FileNotFoundException: "+website))
 					continue;
+				else if(e.toString().equals("java.net.UnknownHostException: CRAN."))continue;
 				else throw new Error();
 				//	System.out.println("Trying to get the PDF without success");
 			}
@@ -564,6 +638,9 @@ public class ReferenceToPdfGetter {
 		{
 			if(PdfToLinksDatabase.hasLinkFailedToLeadToAPdf(website))
 				continue;
+			
+			clearChromeDownloadFolder();
+			
 			if(website.toString().contains("ieeexplore"))continue;
 			tryGettingLinkByHand(website, outputFile);
 			try {
@@ -572,7 +649,41 @@ public class ReferenceToPdfGetter {
 				e.printStackTrace();
 			}
 			if(isValidPDFFileAlreadyThere(r))
+			{
+				System.out.println("DOWNLOADED BY ROBOT");
 				return true;
+			}
+			else if(ProgramwideParameters.GET_CHROME_DOWNLOAD_FOLDER.listFiles().length>0)
+			{
+				Set<File> matchingFiles = Arrays.asList(ProgramwideParameters.GET_CHROME_DOWNLOAD_FOLDER.listFiles()).stream()
+				.filter(x->x.getName().endsWith(".pdf"))
+				.filter(x->isValidFileAlreadyThere(x))
+				.filter(x->
+				{
+					String contents = PdfReader.getStringContentsOutOfFile(x,false).replaceAll("\n", "");
+					List<String> bagOfWords = TextProcessingUtils.toListOfWords(contents);
+					List<String> bagOfWordsTitle = TextProcessingUtils.toListOfWords(r.getTitle());
+					if(Collections.indexOfSubList(bagOfWords, bagOfWordsTitle)>-1)
+						return true;
+					return false;
+					
+				})
+				.collect(Collectors.toSet());
+				
+				if(!matchingFiles.isEmpty())
+				{
+					try {
+						Files.copy(matchingFiles.iterator().next().toPath(), outputFile.toPath());
+					} catch (IOException e) {
+						e.printStackTrace();
+						throw new Error();
+					}
+				//	System.out.println(matchingFiles);
+
+					System.out.println("DOWNLOADED BY ROBOT SAVED LOCALLY REPLACED");
+					return true;
+				}
+			}
 			getPdfFileFor(r).delete();
 			PdfToLinksDatabase.recordAsFailedToGetToAPdf(website);
 		}
@@ -581,6 +692,10 @@ public class ReferenceToPdfGetter {
 
 
 		return false;
+	}
+
+	private static void clearChromeDownloadFolder() {
+		Arrays.asList(ProgramwideParameters.GET_CHROME_DOWNLOAD_FOLDER.listFiles()).stream().forEach(x->x.delete());
 	}
 
 	private static synchronized void tryGettingLinkByHand(URL link, File outputFile) {
