@@ -18,5 +18,6 @@ module scientigrapher {
 	requires textprocessing.generics;
 	requires webscrapping;
 	requires cachingutils;
+	requires org.jsoup;
 	
 }

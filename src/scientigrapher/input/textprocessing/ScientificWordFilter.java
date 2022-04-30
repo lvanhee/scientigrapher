@@ -1,4 +1,4 @@
-package scientigrapher.displays.wordcloud;
+package scientigrapher.input.textprocessing;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -10,7 +10,6 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import textprocessing.BagOfWords;
 import textprocessing.TextProcessingUtils;
 
 public class ScientificWordFilter {
@@ -92,18 +91,6 @@ public class ScientificWordFilter {
 		{
 			if(ngrams.get(s)>2)
 				res.append("\""+ngrams.get(s)+"\";\""+s.get(0)+"\";\"\";\"\"\n");
-		}
-		
-		return res.toString();
-	}
-
-
-
-	public static String getCsvFileFrom(BagOfWords bw) {
-		StringBuilder res = new StringBuilder("\"weight\";\"word\";\"color\";\"url\"\n");
-		for(String s : bw.getWordsSortedByDecreasingNumberOfOccurrences())
-		{
-				res.append("\""+bw.getNbOccurrences(s)+"\";\""+s+"\";\"\";\"\"\n");
 		}
 		
 		return res.toString();

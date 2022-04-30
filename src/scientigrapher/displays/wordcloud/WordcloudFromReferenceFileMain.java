@@ -9,10 +9,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import scientigrapher.datagathering.mains.BibToPdfMain;
+import scientigrapher.datagathering.mains.LinksToPdfsDatabase;
 import scientigrapher.input.ProgramwideParameters;
-import scientigrapher.input.pdfs.PdfToLinksDatabase;
-import scientigrapher.input.pdfs.ReferenceToPdfGetter;
 import scientigrapher.input.references.Reference;
+import scientigrapher.input.textprocessing.ScientificWordFilter;
 import scientigrapher.pdfs.PdfReader;
 import textprocessing.BagOfWords;
 import textprocessing.TextProcessingUtils;
@@ -24,7 +25,7 @@ public class WordcloudFromReferenceFileMain {
 		Set<Reference> allReferences = Reference.referencesFromBibFile(ProgramwideParameters.REFERENCE_BIB_FILE);
 		
 		allReferences = allReferences.parallelStream()
-				.filter(x->ReferenceToPdfGetter.isPdfAccessible(x))
+				.filter(x->BibToPdfMain.isPdfAccessible(x))
 				.collect(Collectors.toSet());
 
 		
@@ -38,7 +39,7 @@ public class WordcloudFromReferenceFileMain {
 
 		Files.writeString(Paths.get("data/plaintext_purged_wordcloud_representation.txt"), outOfFile);
 		
-		String wordCloudCsvRepresentation = ScientificWordFilter.getCsvFileFrom(bw);
+		String wordCloudCsvRepresentation = WordcloudGenerator.getCsvFileFrom(bw);
 		
 		Files.writeString(Paths.get("data/wordcloud_representation.csv"), wordCloudCsvRepresentation);
 		

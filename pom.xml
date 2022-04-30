@@ -33,24 +33,39 @@
 			<artifactId>htmlunit</artifactId>
 			<version>2.49.1</version>
 		</dependency>
-		
+
 		<dependency>
 			<groupId>textprocessing-generics</groupId>
 			<artifactId>textprocessing-generics</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
-		
+
 		<dependency>
 			<groupId>caching-utils</groupId>
 			<artifactId>caching-utils</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
-		
+
 		<dependency>
 			<groupId>webscrapping</groupId>
-  			<artifactId>webscrapping</artifactId>
-  			<version>0.0.1-SNAPSHOT</version>
+			<artifactId>webscrapping</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
+
+		<dependency>
+			<groupId>edu.stanford.nlp</groupId>
+			<artifactId>stanford-corenlp</artifactId>
+			<version>4.4.0</version>
+		</dependency>
+
+		<dependency>
+			<!-- jsoup HTML parser library @ https://jsoup.org/ -->
+			<groupId>org.jsoup</groupId>
+			<artifactId>jsoup</artifactId>
+			<version>1.13.1</version>
+		</dependency>
+
+
 	</dependencies>
 	<repositories>
 		<repository>

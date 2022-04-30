@@ -1,5 +1,6 @@
 package scientigrapher.displays.conceptPerYear;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -8,8 +9,8 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
-import scientigrapher.displays.wordcloud.ScientificWordFilter;
 import scientigrapher.input.references.Reference;
+import scientigrapher.input.textprocessing.ScientificWordFilter;
 import scientigrapher.pdfs.PdfReader;
 import textprocessing.BagOfWords;
 
@@ -18,7 +19,7 @@ public class ConceptPerYearMain {
 	public static void main(String[] args)
 	{
 		String fileName = "data/scopus.bib";
-		Map<Reference,String> m = PdfReader.getStringContentsFromValidFilesMappedToReferenceFromFile(fileName);
+		Map<Reference,String> m = PdfReader.getStringContentsFromValidFilesMappedToReferenceFromFile(new File(fileName));
 		
 		Set<Integer> years = new TreeSet<>(m.keySet().stream().map(x->x.getYear()).collect(Collectors.toSet()));
 		

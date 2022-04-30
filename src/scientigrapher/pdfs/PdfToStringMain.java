@@ -1,12 +1,12 @@
-package scientigrapher.displays.wordcloud;
+package scientigrapher.pdfs;
 
 import java.io.File;
 import java.io.IOException;
 
-import scientigrapher.pdfs.PdfReader;
+import scientigrapher.input.textprocessing.ScientificWordFilter;
 import textprocessing.TextProcessingUtils;
 
-public class MainGenerateTextForWordCloudFromPDF {
+public class PdfToStringMain {
 	
 	public static void main(String[] args) throws IOException
 	{

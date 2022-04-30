@@ -19,7 +19,8 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 
 import cachingutils.SplittedFileBasedCache;
-import scientigrapher.input.pdfs.ReferenceToPdfGetter;
+import scientigrapher.datagathering.mains.BibToPdfMain;
+import scientigrapher.input.ProgramwideParameters;
 import scientigrapher.input.references.Reference;
 
 public class PdfReader {
@@ -36,12 +37,10 @@ public class PdfReader {
 		return new File(x.getAbsolutePath()+"_failed");
 	}
 
-	private static SplittedFileBasedCache<String, String> cache= SplittedFileBasedCache.newInstance(x->new File("data/cache/local_translation_of_pdf_into_strings/"+x+".txt"), Function.identity(), Function.identity());
+	private static SplittedFileBasedCache<String, String> cache= SplittedFileBasedCache.newInstance(x->ProgramwideParameters.TXT_OF_PDF_CACHE, Function.identity(), Function.identity());
 	public static String getStringContentsOutOfFile(File x, String uniqueID, boolean withCache) {
-		if(withCache)
-		{
-			if(cache.has(uniqueID))return cache.get(uniqueID);
-		}
+		if(cache.has(uniqueID))return cache.get(uniqueID);
+		
 		PDFParser parser = null;
 		PDDocument pdDoc = null;
 		COSDocument cosDoc = null;
@@ -105,7 +104,7 @@ public class PdfReader {
 	{
 		return refs.stream().collect(Collectors.toMap(Function.identity(), 
 				x-> PdfReader.getStringContentsOutOfFile(
-		ReferenceToPdfGetter.getPdfFileFor(x),x.getId()+"", true)));			
+		BibToPdfMain.getPdfFileFor(x),x.getId()+"", true)));			
 	}
 
 	public static boolean isParsingWorking(File f) {
@@ -142,11 +141,10 @@ public class PdfReader {
 	}
 
 	public static Map<Reference, String> getStringContentsFromValidFilesMappedToReferenceFromFile(File fileName) {
-		
 		Set<Reference> allReferences = Reference.referencesFromBibFile(fileName);
 		
 		allReferences = allReferences.parallelStream()
-				.filter(x->ReferenceToPdfGetter.isPdfAccessible(x))
+				.filter(x->BibToPdfMain.isPdfAccessible(x))
 				.collect(Collectors.toSet());
 		
 		return getStringContentsPerReference(allReferences);
