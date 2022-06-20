@@ -18,7 +18,7 @@ import org.apache.pdfbox.pdfparser.PDFParser;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 
-import cachingutils.SplittedFileBasedCache;
+import cachingutils.impl.SplittedFileBasedCache;
 import scientigrapher.datagathering.mains.BibToPdfMain;
 import scientigrapher.input.ProgramwideParameters;
 import scientigrapher.input.references.Reference;

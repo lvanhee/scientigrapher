@@ -17,8 +17,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import cachingutils.Cache;
-import cachingutils.TextFileBasedCache;
 import cachingutils.advanced.StringCacheUtils;
+import cachingutils.impl.TextFileBasedCache;
 import scientigrapher.input.ProgramwideParameters;
 import scientigrapher.input.references.Reference;
 

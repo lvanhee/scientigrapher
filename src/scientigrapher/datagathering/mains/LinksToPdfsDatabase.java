@@ -12,8 +12,8 @@ import java.util.HashSet;
 import java.util.Set;
 
 import cachingutils.Cache;
-import cachingutils.FileBasedStringSetCache;
-import cachingutils.TextFileBasedCache;
+import cachingutils.impl.FileBasedStringSetCache;
+import cachingutils.impl.TextFileBasedCache;
 import scientigrapher.input.ProgramwideParameters;
 
 public class LinksToPdfsDatabase {

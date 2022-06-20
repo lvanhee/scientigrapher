@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -20,11 +21,11 @@ import java.util.stream.Collectors;
 import org.jsoup.Jsoup;
 
 import cachingutils.Cache;
-import cachingutils.FileBasedStringSetCache;
-import cachingutils.SplittedFileBasedCache;
-import cachingutils.TextFileBasedCache;
 import cachingutils.advanced.localdatabase.AutofillLocalDatabase;
 import cachingutils.advanced.localdatabase.LocalDatabaseImpl;
+import cachingutils.impl.FileBasedStringSetCache;
+import cachingutils.impl.SplittedFileBasedCache;
+import cachingutils.impl.TextFileBasedCache;
 import scientigrapher.displays.wordcloud.WordcloudGenerator;
 import scientigrapher.input.TextUtils;
 import scientigrapher.input.textprocessing.ScientificWordFilter;
@@ -54,8 +55,10 @@ public class JasssImporter {
 		boolean lastPaperFound = true;
 		
 		Map<String, String> htmlPagePerIndex = new HashMap<>();
-
-
+		
+		Map<Integer,String> indexToKey = new HashMap<>();
+		
+		
 		while(lastPaperFound)
 		{
 			String pageToLookAt = indexesToUrl(volume, number, paperIndex);
@@ -88,21 +91,28 @@ public class JasssImporter {
 			else
 			{
 				htmlPagePerIndex.put(key, pageContents);
+				indexToKey.put(indexToKey.size(), key);
 				paperIndex++;
 			}
 		}
 		
 		System.out.println("Loaded: "+htmlPagePerIndex.size()+" papers.");
 		
-		Map<String, String> plainText = htmlPagePerIndex.keySet().stream().collect(Collectors.toMap(Function.identity(), x->Jsoup.parse(htmlPagePerIndex.get(x)).wholeText()));
-		Map<String, List<String>> stringPerText = htmlPagePerIndex.keySet().stream().collect(Collectors.toMap(Function.identity(), x->TextProcessingUtils.toListOfWords(plainText.get(x))));
-		Map<String, BagOfWords> bagOfWordsPerEntry = plainText.keySet().stream().collect(Collectors.toMap(Function.identity(), x->BagOfWords.newInstance(x, ScientificWordFilter.INTERESTING_SCIENTIFIC_TERM, true)));
+		Map<String, String> keyToPlainText = htmlPagePerIndex.keySet().stream().collect(Collectors.toMap(Function.identity(), x->Jsoup.parse(htmlPagePerIndex.get(x)).wholeText()));
+		
+		System.out.println("Exporting text to CVS file");		
+		exportToCSVFile(indexToKey, keyToPlainText);
+
+		
+		Map<String, List<String>> stringPerText = htmlPagePerIndex.keySet().stream().collect(Collectors.toMap(Function.identity(), x->TextProcessingUtils.toListOfWords(keyToPlainText.get(x))));
+		Map<String, BagOfWords> bagOfWordsPerEntry = keyToPlainText.keySet().stream().collect(Collectors.toMap(Function.identity(), x->BagOfWords.newInstance(x, ScientificWordFilter.INTERESTING_SCIENTIFIC_TERM, true)));
 		
 		List<String> allTextInASingleList = stringPerText.values().stream().reduce(new ArrayList(),(x,y)->{x.addAll(y); return x;});
 		
 		
 		System.out.println("Loading APA words");
 		Set<String> allApaWords = Files.readAllLines(Paths.get("../databases/jasss/apa.txt")).stream().collect(Collectors.toSet());
+		
 		
 		
 		exportNumberOfOccurrencesOfWordsInMappedListsOfWords(allApaWords, stringPerText);
@@ -130,12 +140,17 @@ public class JasssImporter {
 		
 		System.out.println(bagOfWordsPerEntry.values().iterator().next());
 		
-		String globalString = plainText.values().stream().reduce("", (x,y)->x+y);
+		String globalString = keyToPlainText.values().stream().reduce("", (x,y)->x+y);
 		
 		Files.writeString(Paths.get("../databases/jasss/wordcount.csv"), WordcloudGenerator.getCsvFileFrom(BagOfWords.newInstance(globalString, ScientificWordFilter.INTERESTING_SCIENTIFIC_TERM, true)));
 		
 		System.out.println(globalString.length());
 		
+	}
+
+	private static void exportToCSVFile(Map<Integer, String> indexToKey, Map<String, String> keyToPlainText) throws IOException {
+		String res = "id,paper_text\n"+indexToKey.keySet().stream().sorted().map(x->indexToKey.get(x)+","+keyToPlainText.get(indexToKey.get(x)).replaceAll("\r", " ").replaceAll(","," ").replaceAll("\n", " ")).reduce("",(x,y)->x+"\n"+y);
+		Files.writeString(new File("../databases/jasss/all_papers.csv").toPath(), res);		
 	}
 
 	private static void exportNumberOfOccurrencesOfWordsInMappedListsOfWords(Set<String> allApa, Map<String, List<String>>wordListPerKey) throws IOException {

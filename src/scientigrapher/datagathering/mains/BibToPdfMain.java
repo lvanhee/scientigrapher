@@ -3,13 +3,13 @@ package scientigrapher.datagathering.mains;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 
-import cachingutils.FileBasedStringSetCache;
-import cachingutils.TextFileBasedCache;
 import cachingutils.advanced.StringCacheUtils;
 import cachingutils.advanced.failable.AttemptOutcome;
 import cachingutils.advanced.failable.SuccessfulOutcome;
 import cachingutils.advanced.localdatabase.AutofillLocalDatabase;
 import cachingutils.advanced.localdatabase.LocalDatabaseImpl;
+import cachingutils.impl.FileBasedStringSetCache;
+import cachingutils.impl.TextFileBasedCache;
 import scientigrapher.datagathering.GoogleScholarGatherer;
 import scientigrapher.datagathering.OnlinePdfGatherer;
 import scientigrapher.datagathering.PdfLinksGatherer;
