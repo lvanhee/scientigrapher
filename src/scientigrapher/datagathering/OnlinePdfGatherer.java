@@ -114,7 +114,7 @@ public class OnlinePdfGatherer {
 				.filter(x->isValidFileAlreadyThere(x))
 				.filter(x->
 				{
-					String contents = PdfReader.getStringContentsOutOfFile(x,r.getId()+"",false).replaceAll("\n", "");
+					String contents = PdfReader.getStringContentsOutOfFile(x,r.getUniqueId()+"",false).replaceAll("\n", "");
 					List<String> bagOfWords = TextProcessingUtils.toListOfWords(contents);
 					List<String> bagOfWordsTitle = TextProcessingUtils.toListOfWords(r.getTitle());
 					if(Collections.indexOfSubList(bagOfWords, bagOfWordsTitle)>-1)

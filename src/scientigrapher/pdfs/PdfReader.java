@@ -104,7 +104,7 @@ public class PdfReader {
 	{
 		return refs.stream().collect(Collectors.toMap(Function.identity(), 
 				x-> PdfReader.getStringContentsOutOfFile(
-		BibToPdfMain.getPdfFileFor(x),x.getId()+"", true)));			
+		BibToPdfMain.getPdfFileFor(x),x.getUniqueId()+"", true)));			
 	}
 
 	public static boolean isParsingWorking(File f) {

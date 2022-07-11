@@ -14,7 +14,7 @@ import webscrapping.RobotBasedPageReader;
 public class GoogleScholarGatherer {
 
 	public static final SplittedFileBasedCache<Reference, String> googleReferenceManagerCache = 
-			SplittedFileBasedCache.newInstance(r->new File(ProgramwideParameters.GOOGLE_SCHOLAR_ENTRY_FOLDER.getAbsolutePath()+"/"+r.getId()+".txt"), Function.identity(), Function.identity());
+			SplittedFileBasedCache.newInstance(r->new File(ProgramwideParameters.GOOGLE_SCHOLAR_ENTRY_FOLDER.getAbsolutePath()+"/"+r.getUniqueLocalId()+".txt"), Function.identity(), Function.identity());
 
 	
 	public static String getHtmlOfGoogleScholarReferencePage(Reference r) {
@@ -53,10 +53,9 @@ public class GoogleScholarGatherer {
 				||fullText.contains("<title>Sorry...</title>"))
 			throw new Error("Busted that we are a robot!");
 
-		fullText = fullText.replaceAll("<br>\n", "<br>");
+		fullText = fullText.replaceAll("<br>\n", "<br>").trim();
 
-		if(!fullText.startsWith("\r\n" + 
-				"<!doctype html>"))
+		if(!fullText.startsWith("<!doctype html>"))
 			throw new Error("Failed loading google scholar page");
 		GoogleScholarGatherer.googleReferenceManagerCache.add(r, fullText);
 

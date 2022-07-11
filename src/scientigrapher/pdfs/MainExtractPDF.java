@@ -2,6 +2,9 @@ package scientigrapher.pdfs;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -10,6 +13,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.apache.pdfbox.io.RandomAccessRead;
 
@@ -17,10 +22,26 @@ import org.apache.pdfbox.io.RandomAccessRead;
 public class MainExtractPDF {
 
 	public static void main(String args[]) throws IOException {
-		String fileName = "data/thesis.pdf";
+		File inputFile = new File("C:\\Users\\loisv\\Desktop\\data_troll");
+		String outputFileName = "all_troll_text.txt";
+		
+		
+		
+		if(inputFile.isDirectory())
+		{
+			Map<File, String> allContents = getStringContentsOutOfFolder(inputFile);
+			
+			String concat = "id,paper_text"+allContents.keySet().stream().map(x->x.getName()+","+allContents.get(x).replaceAll(",", "").replaceAll("\n", "")).reduce("", (x,y)->x+"\n"+y);
+			String translatedConcat = new String(concat.getBytes(), StandardCharsets.UTF_8);
+			
+			Files.writeString(Paths.get(outputFileName), translatedConcat, StandardCharsets.UTF_8);
 
-		String outOfFile = PdfReader.getStringContentsOutOfFile(new File(fileName));
-		System.out.println(outOfFile);
+		}
+		else
+		{
+			String outOfFile = PdfReader.getStringContentsOutOfFile(inputFile, inputFile.getName(),false);
+			System.out.println(outOfFile);
+		}
 	}
 
 	private static Map<String, Map<String, Integer>> bigramAssociationCounter(String string) {
@@ -45,12 +66,13 @@ public class MainExtractPDF {
 				.replaceAll("\\)","").replaceAll(",", "");
 	}
 
-	private static String getStringContentsOutOfFolder(String folderName) {
-		File folder = new File(folderName);
+	private static Map<File,String> getStringContentsOutOfFolder(File folder) {
 
-		return Arrays.asList(folder.listFiles()).stream().map(x->{
-			return PdfReader.getStringContentsOutOfFile(x);
-		}).reduce("", (x,y)-> x+"\n\n"+y);
+		return Arrays.asList(folder.listFiles())
+				.stream()
+				.collect(Collectors.toMap(Function.identity(), 
+						x->
+				PdfReader.getStringContentsOutOfFile(x,x.getName(),false)));
 
 	}
 

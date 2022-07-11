@@ -19,5 +19,10 @@ module scientigrapher {
 	requires webscrapping;
 	requires cachingutils;
 	requires org.jsoup;
+	requires org.apache.httpcomponents.httpcore;
+	requires org.apache.httpcomponents.httpclient;
+	requires json.simple;
+	requires commons.lang;
+	requires junit;
 	
 }

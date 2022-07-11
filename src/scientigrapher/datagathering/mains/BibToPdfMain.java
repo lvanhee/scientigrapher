@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
@@ -66,13 +67,13 @@ public class BibToPdfMain {
 		AtomicInteger currentDone = new AtomicInteger();
 
 		System.out.println("Loading all links referenced by unpaywall");
-		allEntries.stream().sorted((x,y)->Integer.compare(x.getId(), y.getId())).forEach(r->
+		allEntries.stream().sorted((x,y)->x.getUniqueId().compareTo(y.getUniqueId())).forEach(r->
 		{
 			System.out.println("Getting unpaywall references for: "+r+unpaywallUrlDatabase.get(r));
 			unpaywallUrlDatabase.get(r);});
 		
 		System.out.println("Trying to load the entries using unpaywall");
-		allEntries.stream().sorted((x,y)->Integer.compare(x.getId(), y.getId())).forEach(r->
+		allEntries.stream().sorted((x,y)->x.getUniqueId().compareTo(y.getUniqueId())).forEach(r->
 		attemptDownloadingPdfWithUnpaywall(r));
 				
 		allEntries = allEntries.stream().filter(x->!OnlinePdfGatherer.isValidPDFFileAlreadyThere(x)).collect(Collectors.toSet());
@@ -83,7 +84,7 @@ public class BibToPdfMain {
 		
 		int totalEntriesRemaining = allEntries.size();
 		allEntries.stream()
-		.sorted((x,y)->Integer.compare(x.getId(),y.getId()))
+		.sorted((x,y)->x.getUniqueId().compareTo(y.getUniqueId()))
 		.filter(x->GoogleScholarGatherer.isInGoogleScholar(x))
 		.forEach(x->{
 		GoogleScholarGatherer
@@ -97,7 +98,7 @@ public class BibToPdfMain {
 		System.out.println("Metadata loaded. Now loading the PDFs");
 
 		allEntries.stream()
-		.sorted((x,y)->Integer.compare(x.getId(),y.getId()))
+		.sorted((x,y)->x.getUniqueId().compareTo(y.getUniqueId()))
 		.forEach(
 				r ->{
 					System.out.println(r);
@@ -159,15 +160,15 @@ public class BibToPdfMain {
 	}
 
 	
-	private final static FileBasedStringSetCache<Integer> referenceFoundOnUnpaywall = FileBasedStringSetCache
-			.loadCache(ProgramwideParameters.UNPAYWALL_FOUND_ENTRIES.toPath(), x->Integer.parseInt(x), (Integer x)->x.toString());
+	private final static FileBasedStringSetCache<String> referenceFoundOnUnpaywall = FileBasedStringSetCache
+			.loadCache(ProgramwideParameters.UNPAYWALL_FOUND_ENTRIES.toPath(), Function.identity(), Function.identity());
 	
-	private final static FileBasedStringSetCache<Integer> referenceFailedToBeFoundOnUnpaywall = FileBasedStringSetCache
-			.loadCache(ProgramwideParameters.UNPAYWALL_UNFOUND_ENTRIES.toPath(), x->Integer.parseInt(x), (Integer x)->x.toString());
+	private final static FileBasedStringSetCache<String> referenceFailedToBeFoundOnUnpaywall = FileBasedStringSetCache
+			.loadCache(ProgramwideParameters.UNPAYWALL_UNFOUND_ENTRIES.toPath(), Function.identity(), Function.identity());
 	
 	public static boolean attemptDownloadingPdfWithUnpaywall(Reference r) {
-		if(referenceFoundOnUnpaywall.contains(r.getId()))return true;
-		if(referenceFailedToBeFoundOnUnpaywall.contains(r.getId()))return false;
+		if(referenceFoundOnUnpaywall.contains(r.getUniqueId()))return true;
+		if(referenceFailedToBeFoundOnUnpaywall.contains(r.getUniqueId()))return false;
 		
 		/*if(r.toString().contains(" emotion: An uncertainty theory of anxiety"))
 			System.out.println();*/
@@ -179,15 +180,15 @@ public class BibToPdfMain {
 		boolean res = OnlinePdfGatherer.downloadPdfFromSetOfLinks(links,r);
 		
 		if(res)
-			referenceFoundOnUnpaywall.add(r.getId());
+			referenceFoundOnUnpaywall.add(r.getUniqueId());
 		else
-			referenceFailedToBeFoundOnUnpaywall.add(r.getId());
+			referenceFailedToBeFoundOnUnpaywall.add(r.getUniqueId());
 		return res;
 	}
 
 	public static File getPdfFileFor(Reference r) {
 		return Paths
-				.get(ProgramwideParameters.PDF_FOLDER.getAbsolutePath()+"/"+r.getId()+".pdf")
+				.get(ProgramwideParameters.PDF_FOLDER.getAbsolutePath()+"/"+r.getUniqueId()+".pdf")
 				.toFile();
 	}
 
